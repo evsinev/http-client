@@ -20,7 +20,12 @@ public class HttpClientImpl implements IHttpClient {
 
     private static final Logger LOG = LoggerFactory.getLogger(HttpClientImpl.class);
 
+    /**
+     * Registers LocalThreadProxyAuthenticator
+     *
+     */
     public static void registerGlobalProxyAuthenticator() {
+        System.getProperties().put("jdk.http.auth.tunneling.disabledSchemes", ""); // see https://bugs.openjdk.java.net/browse/JDK-8210814
         Authenticator.setDefault(new LocalThreadProxyAuthenticator());
     }
 
