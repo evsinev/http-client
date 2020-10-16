@@ -10,10 +10,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.ProtocolException;
-import java.net.URL;
+import java.net.*;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -23,16 +20,29 @@ public class HttpClientImpl implements IHttpClient {
 
     private static final Logger LOG = LoggerFactory.getLogger(HttpClientImpl.class);
 
+    public static void registerGlobalProxyAuthenticator() {
+        Authenticator.setDefault(new LocalThreadProxyAuthenticator());
+    }
 
     @Override
-    public HttpResponse send(HttpRequest aRequest, HttpTimeouts aTimeouts) throws HttpConnectException, HttpReadException, HttpWriteException {
-        String            url        = aRequest.getUrl();
-        HttpURLConnection connection = createConnection(url, aRequest.getMethod(), aTimeouts);
+    public HttpResponse send(HttpRequest aRequest, HttpRequestParameters aRequestParameters) throws HttpConnectException, HttpReadException, HttpWriteException {
+        HttpProxyParameters proxyParameters = aRequestParameters.getProxyParameters();
+        if(proxyParameters != null) {
+            LocalThreadProxyAuthenticator.setParameters(proxyParameters);
+        }
+        try {
+            String            url        = aRequest.getUrl();
+            HttpURLConnection connection = createConnection(url, aRequest.getMethod(), aRequestParameters);
 
-        sendHeaders(connection, aRequest.getHeaders());
-        sendBody(url, connection, aRequest.getBody());
+            sendHeaders(connection, aRequest.getHeaders());
+            sendBody(url, connection, aRequest.getBody());
 
-        return parseResponse(url, connection);
+            return parseResponse(url, connection);
+        } finally {
+            if(proxyParameters != null) {
+                LocalThreadProxyAuthenticator.clear();
+            }
+        }
     }
 
     private HttpResponse parseResponse(String aUrl, HttpURLConnection aConnection) throws HttpReadException {
@@ -142,7 +152,7 @@ public class HttpClientImpl implements IHttpClient {
         }
     }
 
-    private HttpURLConnection createConnection(String aUrl, HttpMethod aMethod, HttpTimeouts aTimeouts) throws HttpConnectException {
+    private HttpURLConnection createConnection(String aUrl, HttpMethod aMethod, HttpRequestParameters aParameters) throws HttpConnectException {
         URL url;
         try {
             url = new URL(aUrl);
@@ -152,13 +162,13 @@ public class HttpClientImpl implements IHttpClient {
 
         HttpURLConnection connection;
         try {
-            connection = (HttpURLConnection) url.openConnection();
+            connection = openConnection(aParameters, url);
         } catch (IOException e) {
             throw new HttpConnectException("Cannot open connection to " + aUrl, e);
         }
 
-        connection.setConnectTimeout(aTimeouts.getConnectTimeoutMs());
-        connection.setReadTimeout(aTimeouts.getReadTimeoutMs());
+        connection.setConnectTimeout(aParameters.getTimeouts().getConnectTimeoutMs());
+        connection.setReadTimeout(aParameters.getTimeouts().getReadTimeoutMs());
 
         try {
             connection.setRequestMethod(aMethod.name());
@@ -167,6 +177,16 @@ public class HttpClientImpl implements IHttpClient {
         }
 
         return connection;
+    }
+
+    private HttpURLConnection openConnection(HttpRequestParameters aParameters, URL url) throws IOException {
+        HttpProxyParameters proxyParameters = aParameters.getProxyParameters();
+
+        if(proxyParameters == null || proxyParameters.getProxy() == null) {
+            return (HttpURLConnection) url.openConnection();
+        }
+
+        return (HttpURLConnection) url.openConnection(proxyParameters.getProxy());
     }
 
     public static byte[] readFully(InputStream aInputStream, int length) throws IOException {

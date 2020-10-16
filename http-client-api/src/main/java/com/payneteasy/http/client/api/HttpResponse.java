@@ -1,6 +1,5 @@
 package com.payneteasy.http.client.api;
 
-import com.payneteasy.http.client.api.HttpHeader;
 import lombok.Data;
 
 import java.nio.charset.StandardCharsets;
