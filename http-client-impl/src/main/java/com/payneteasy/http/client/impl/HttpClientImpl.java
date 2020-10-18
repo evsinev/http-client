@@ -11,10 +11,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.*;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class HttpClientImpl implements IHttpClient {
 
@@ -61,7 +58,7 @@ public class HttpClientImpl implements IHttpClient {
         }
 
         List<HttpHeader> headers = readHeaders(aConnection);
-        byte[]           body    = readMessageBody(aUrl, statusCode, aConnection);
+        byte[]           body    = readMessageBody(aUrl, statusCode, aConnection, headers);
 
         return new HttpResponse(statusCode, reasonPhrase, headers, body);
     }
@@ -77,7 +74,7 @@ public class HttpClientImpl implements IHttpClient {
         return statusCode;
     }
 
-    private byte[] readMessageBody(String aUrl, int aStatusCode, HttpURLConnection aConnection) throws HttpReadException {
+    private byte[] readMessageBody(String aUrl, int aStatusCode, HttpURLConnection aConnection, List<HttpHeader> aHeaders) throws HttpReadException {
         InputStream inputStream;
         try {
             inputStream = aStatusCode >= 400 ? aConnection.getErrorStream() : aConnection.getInputStream();
@@ -86,11 +83,22 @@ public class HttpClientImpl implements IHttpClient {
         }
 
         int length = aConnection.getContentLength();
+        if(length <= 0 ) {
+            HttpHeaderFinder headerFinder = new HttpHeaderFinder(aHeaders);
+            Optional<String> transferEncodingOption            = headerFinder.get("Transfer-Encoding");
+            if(!transferEncodingOption.isPresent()) {
+                return new byte[0];
+            }
+            if(transferEncodingOption.get().contains("chunked")) {
+                try {
+                    return readAllBytes(inputStream);
+                } catch (IOException e) {
+                    throw new HttpReadException("Cannot read chunked body from " + aUrl, e);
+                }
+            }
 
-        if(length == -1) {
-            return new byte[0];
         }
-        
+
         try {
             return readFully(inputStream, length);
         } catch (IOException e) {
@@ -211,6 +219,31 @@ public class HttpClientImpl implements IHttpClient {
         } while (count < length);
 
         return buffer;
+    }
+
+    public static byte[] readAllBytes(InputStream aInputStream) throws IOException {
+        List<byte[]> list   = new ArrayList<>();
+        byte[]       buffer = new byte[2048];
+        int          count;
+
+        while( (count = aInputStream.read(buffer)) >= 0) {
+            byte[] bytes = new byte[count];
+            System.arraycopy(buffer, 0, bytes, 0, count);
+            list.add(bytes);
+        }
+
+        int size = 0;
+        for (byte[] bytes : list) {
+            size += bytes.length;
+        }
+
+        byte[] output = new byte[size];
+        int position = 0;
+        for (byte[] bytes : list) {
+            System.arraycopy(bytes, 0, output, position, bytes.length);
+            position += bytes.length;
+        }
+        return output;
     }
 
 
