@@ -136,7 +136,7 @@ public class HttpClientImpl implements IHttpClient {
     }
 
     private void sendBody(String aUrl, HttpURLConnection aConnection, byte[] aRequestBody) throws HttpWriteException {
-        if(aRequestBody == null) {
+        if(aRequestBody == null || aRequestBody.length == 0) {
             return;
         }
 
