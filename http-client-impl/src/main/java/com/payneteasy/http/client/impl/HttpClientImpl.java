@@ -39,7 +39,7 @@ public class HttpClientImpl implements IHttpClient {
             sendHeaders(connection, aRequest.getHeaders());
             sendBody(url, connection, aRequest.getBody());
 
-            return parseResponse(url, connection);
+            return parseResponse(url, connection, aRequestParameters.getTimeouts());
         } finally {
             if(proxyParameters != null) {
                 LocalThreadProxyAuthenticator.clear();
@@ -47,8 +47,8 @@ public class HttpClientImpl implements IHttpClient {
         }
     }
 
-    private HttpResponse parseResponse(String aUrl, HttpURLConnection aConnection) throws HttpReadException {
-        int              statusCode = waitForStatusCode(aUrl, aConnection);
+    private HttpResponse parseResponse(String aUrl, HttpURLConnection aConnection, HttpTimeouts aTimeouts) throws HttpReadException {
+        int              statusCode = waitForStatusCode(aUrl, aConnection, aTimeouts);
 
         String reasonPhrase;
         try {
@@ -63,8 +63,8 @@ public class HttpClientImpl implements IHttpClient {
         return new HttpResponse(statusCode, reasonPhrase, headers, body);
     }
 
-    private int waitForStatusCode(String aUrl, HttpURLConnection aConnection) throws HttpReadException {
-        LOG.debug("Waiting for response code for {} ...", aUrl);
+    private int waitForStatusCode(String aUrl, HttpURLConnection aConnection, HttpTimeouts aTimeouts) throws HttpReadException {
+        LOG.debug("Waiting for response code for {} with timeouts {} ...", aUrl, aTimeouts);
         int statusCode;
         try {
             statusCode = aConnection.getResponseCode();
