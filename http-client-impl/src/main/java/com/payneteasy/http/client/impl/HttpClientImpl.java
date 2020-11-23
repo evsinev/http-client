@@ -4,18 +4,17 @@ import com.payneteasy.http.client.api.*;
 import com.payneteasy.http.client.api.exceptions.HttpConnectException;
 import com.payneteasy.http.client.api.exceptions.HttpReadException;
 import com.payneteasy.http.client.api.exceptions.HttpWriteException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.*;
 import java.util.*;
+import java.util.logging.Logger;
 
 public class HttpClientImpl implements IHttpClient {
 
-    private static final Logger LOG = LoggerFactory.getLogger(HttpClientImpl.class);
+    private static final Logger LOG = Logger.getLogger("http-client.HttpClientImpl");
 
     /**
      * Registers LocalThreadProxyAuthenticator
@@ -64,7 +63,7 @@ public class HttpClientImpl implements IHttpClient {
     }
 
     private int waitForStatusCode(String aUrl, HttpURLConnection aConnection, HttpTimeouts aTimeouts) throws HttpReadException {
-        LOG.debug("Waiting for response code for {} with timeouts {} ...", aUrl, aTimeouts);
+        LOG.fine(String.format("Waiting for response code for %s with timeouts %s ...", aUrl, aTimeouts.toString()));
         int statusCode;
         try {
             statusCode = aConnection.getResponseCode();
