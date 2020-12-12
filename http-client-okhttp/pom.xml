@@ -3,9 +3,9 @@
     <packaging>jar</packaging>
 
     <groupId>com.payneteasy.http-client</groupId>
-    <artifactId>http-client-integration-test</artifactId>
+    <artifactId>http-client-okhttp</artifactId>
 
-    <name>http client integration test ${project.version}</name>
+    <name>http client okhttp ${project.version}</name>
 
     <parent>
         <groupId>com.payneteasy</groupId>
@@ -13,22 +13,19 @@
         <version>1.0-1-SNAPSHOT</version>
     </parent>
 
-    <properties>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <skipTests>true</skipTests>
-    </properties>
-
-    <profiles>
-        <profile>
-            <id>integration-test</id>
-            <properties>
-                <skipTests>false</skipTests>
-            </properties>
-        </profile>
-
-    </profiles>
-
     <dependencies>
+
+
+        <dependency>
+            <groupId>com.payneteasy.http-client</groupId>
+            <artifactId>http-client-api</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
 
         <dependency>
             <groupId>com.google.code.findbugs</groupId>
@@ -42,13 +39,8 @@
         </dependency>
 
         <dependency>
-            <groupId>com.payneteasy.http-client</groupId>
-            <artifactId>http-client-impl</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>com.payneteasy.http-client</groupId>
-            <artifactId>http-client-okhttp</artifactId>
+            <artifactId>okhttp</artifactId>
+            <groupId>com.squareup.okhttp3</groupId>
         </dependency>
 
     </dependencies>
