@@ -2,6 +2,7 @@ package com.payneteasy.http.client.okhttp;
 
 import com.payneteasy.http.client.api.*;
 import com.payneteasy.http.client.api.exceptions.HttpConnectException;
+import com.payneteasy.http.client.api.exceptions.HttpProxyAuthConnectionException;
 import com.payneteasy.http.client.api.exceptions.HttpReadException;
 import com.payneteasy.http.client.api.exceptions.HttpWriteException;
 import kotlin.Pair;
@@ -14,6 +15,7 @@ import javax.net.ssl.SSLHandshakeException;
 import javax.net.ssl.SSLPeerUnverifiedException;
 import java.io.IOException;
 import java.io.InterruptedIOException;
+import java.net.ConnectException;
 import java.net.ProtocolException;
 import java.net.SocketTimeoutException;
 import java.util.ArrayList;
@@ -25,7 +27,19 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 public class HttpClientOkHttpImpl implements IHttpClient {
 
-    private final OkHttpClient defaultClient = new OkHttpClient();
+    private final OkHttpClient defaultClient;
+
+
+    public HttpClientOkHttpImpl() {
+        this(new OkHttpClient.Builder()
+                .connectionPool(new ConnectionPool())
+                .build()
+        );
+    }
+
+    public HttpClientOkHttpImpl(OkHttpClient aDefaultClient) {
+        defaultClient = aDefaultClient;
+    }
 
     @Override
     public HttpResponse send(HttpRequest aRequest, HttpRequestParameters aRequestParameters) throws HttpConnectException, HttpReadException, HttpWriteException {
@@ -51,12 +65,18 @@ public class HttpClientOkHttpImpl implements IHttpClient {
             } else {
                 throw new HttpConnectException("Protocol error: cannot connect to " + url + " within " + (System.currentTimeMillis() - starTimeMs) + " ms", e);
             }
+        } catch (ConnectException e) {
+            throw new HttpConnectException("Cannot connect to " + url + " within " + (System.currentTimeMillis() - starTimeMs) + " ms", e);
         } catch (SocketTimeoutException e) {
             throw new HttpConnectException("Connection timed out to " + url + " within " + (System.currentTimeMillis() - starTimeMs) + " ms", e);
         } catch (InterruptedIOException e) {
             throw new HttpConnectException("Connection interrupted to " + url + " within " + (System.currentTimeMillis() - starTimeMs) + " ms", e);
         } catch (IOException e) {
-            throw new HttpReadException("Cannot call to " + url, e);
+            if("Failed to authenticate with proxy".equals(e.getMessage())) {
+                throw new HttpProxyAuthConnectionException("Failed to authenticate with proxy", e);
+            }
+            
+            throw new HttpReadException("Cannot read from " + url, e);
         }
         return response;
     }

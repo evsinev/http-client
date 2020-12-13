@@ -17,9 +17,14 @@ import static com.payneteasy.http.client.api.HttpMethod.GET;
 @RunWith(Parameterized.class)
 public class BadSslTest {
 
-    public static final HttpTimeouts          TIMEOUTS = new HttpTimeouts(10_000, 10_000);
+    private static final HttpTimeouts          TIMEOUTS = new HttpTimeouts(10_000, 10_000);
+    private static final HttpRequestParameters PARAMS   = HttpRequestParameters.builder().timeouts(TIMEOUTS).build();
+
     private final       IHttpClient           client;
-    public static final HttpRequestParameters PARAMS   = HttpRequestParameters.builder().timeouts(TIMEOUTS).build();
+
+    public BadSslTest(IHttpClient client) {
+        this.client = client;
+    }
 
     @Parameterized.Parameters
     public static IHttpClient[] parameters() {
@@ -28,9 +33,6 @@ public class BadSslTest {
         };
     }
 
-    public BadSslTest(IHttpClient client) {
-        this.client = client;
-    }
 
     @Test
     public void expired() {

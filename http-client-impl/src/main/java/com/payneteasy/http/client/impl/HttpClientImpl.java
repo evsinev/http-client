@@ -70,6 +70,8 @@ public class HttpClientImpl implements IHttpClient {
             statusCode = aConnection.getResponseCode();
         } catch (SSLHandshakeException e) {
             throw new HttpConnectException("Bad ssl certificate at " + aUrl, e);
+        } catch (ConnectException e) {
+            throw new HttpConnectException("Cannot connect to " + aUrl, e);
         } catch (IOException e) {
             throw new HttpReadException("Cannot wait for response code for url " + aUrl, e);
         }
@@ -84,6 +86,10 @@ public class HttpClientImpl implements IHttpClient {
             throw new HttpReadException("Cannot create input stream for url " + aUrl, e);
         }
 
+        if(inputStream == null) {
+            return new byte[0];
+        }
+        
         int length = aConnection.getContentLength();
         if(length <= 0 ) {
             HttpHeaderFinder headerFinder = new HttpHeaderFinder(aHeaders);
