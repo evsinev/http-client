@@ -5,6 +5,7 @@ import com.payneteasy.http.client.api.exceptions.HttpConnectException;
 import com.payneteasy.http.client.api.exceptions.HttpReadException;
 import com.payneteasy.http.client.api.exceptions.HttpWriteException;
 
+import javax.net.ssl.SSLHandshakeException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -46,7 +47,7 @@ public class HttpClientImpl implements IHttpClient {
         }
     }
 
-    private HttpResponse parseResponse(String aUrl, HttpURLConnection aConnection, HttpTimeouts aTimeouts) throws HttpReadException {
+    private HttpResponse parseResponse(String aUrl, HttpURLConnection aConnection, HttpTimeouts aTimeouts) throws HttpReadException, HttpConnectException {
         int              statusCode = waitForStatusCode(aUrl, aConnection, aTimeouts);
 
         String reasonPhrase;
@@ -62,11 +63,13 @@ public class HttpClientImpl implements IHttpClient {
         return new HttpResponse(statusCode, reasonPhrase, headers, body);
     }
 
-    private int waitForStatusCode(String aUrl, HttpURLConnection aConnection, HttpTimeouts aTimeouts) throws HttpReadException {
+    private int waitForStatusCode(String aUrl, HttpURLConnection aConnection, HttpTimeouts aTimeouts) throws HttpReadException, HttpConnectException {
         LOG.fine(String.format("Waiting for response code for %s with timeouts %s ...", aUrl, aTimeouts.toString()));
         int statusCode;
         try {
             statusCode = aConnection.getResponseCode();
+        } catch (SSLHandshakeException e) {
+            throw new HttpConnectException("Bad ssl certificate at " + aUrl, e);
         } catch (IOException e) {
             throw new HttpReadException("Cannot wait for response code for url " + aUrl, e);
         }

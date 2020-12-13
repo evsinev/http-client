@@ -5,10 +5,13 @@ import com.payneteasy.http.client.api.exceptions.HttpConnectException;
 import com.payneteasy.http.client.api.exceptions.HttpReadException;
 import com.payneteasy.http.client.api.exceptions.HttpWriteException;
 import kotlin.Pair;
+import lombok.NonNull;
 import okhttp3.*;
 import okhttp3.internal.Util;
 import org.jetbrains.annotations.NotNull;
 
+import javax.net.ssl.SSLHandshakeException;
+import javax.net.ssl.SSLPeerUnverifiedException;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.net.ProtocolException;
@@ -26,29 +29,36 @@ public class HttpClientOkHttpImpl implements IHttpClient {
 
     @Override
     public HttpResponse send(HttpRequest aRequest, HttpRequestParameters aRequestParameters) throws HttpConnectException, HttpReadException, HttpWriteException {
-        Request      request    = createRequest(aRequest);
-        OkHttpClient client     = createClient(aRequestParameters);
-        Call         call       = client.newCall(request);
-        long         starTimeMs = System.currentTimeMillis();
+        Request      request  = createRequest(aRequest);
+        OkHttpClient client   = createClient(aRequestParameters);
+        Call         call     = client.newCall(request);
+        String       url      = aRequest.getUrl();
+        Response     response = executeCall(call, url);
+        return createResponse(response);
+    }
 
-        Response     response;
+    @NotNull
+    private Response executeCall(Call call, @NonNull String url) throws HttpConnectException, HttpReadException {
+        long         starTimeMs = System.currentTimeMillis();
+        Response response;
         try {
             response = call.execute();
+        } catch (SSLHandshakeException |SSLPeerUnverifiedException e) {
+            throw new HttpConnectException("Bad ssl certificate at " + url, e);
         } catch (ProtocolException e) {
             if("Unexpected status line: <html><head><title>407 Proxy Authentication Required</title></head>".equals(e.getMessage())) {
                 throw new HttpConnectException("407 Proxy Authentication Required", e);
             } else {
-                throw new HttpConnectException("Protocol error: cannot connect to " + aRequest.getUrl() + " within " + (System.currentTimeMillis() - starTimeMs) + " ms", e);
+                throw new HttpConnectException("Protocol error: cannot connect to " + url + " within " + (System.currentTimeMillis() - starTimeMs) + " ms", e);
             }
         } catch (SocketTimeoutException e) {
-            throw new HttpConnectException("Connection timed out to " + aRequest.getUrl() + " within " + (System.currentTimeMillis() - starTimeMs) + " ms", e);
+            throw new HttpConnectException("Connection timed out to " + url + " within " + (System.currentTimeMillis() - starTimeMs) + " ms", e);
         } catch (InterruptedIOException e) {
-            throw new HttpConnectException("Connection interrupted to " + aRequest.getUrl() + " within " + (System.currentTimeMillis() - starTimeMs) + " ms", e);
+            throw new HttpConnectException("Connection interrupted to " + url + " within " + (System.currentTimeMillis() - starTimeMs) + " ms", e);
         } catch (IOException e) {
-            throw new HttpReadException("Cannot call to " + aRequest.getUrl(), e);
+            throw new HttpReadException("Cannot call to " + url, e);
         }
-
-        return createResponse(response);
+        return response;
     }
 
     @NotNull
