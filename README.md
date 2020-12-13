@@ -6,6 +6,7 @@ Features:
 * no dependecies
 * ability to run on Android
 * small footprint
+* URLConnection or OkHttp
 
 ## How to add it into your app
 
@@ -31,7 +32,18 @@ Features:
 ### Java code
 
 ```java
-// TODO
-);
+HttpRequest request = HttpRequest.builder()
+    .method ( GET  )
+    .url    ( "https://extended-validation.badssl.com/" )
+    .build();
+
+HttpRequestParameters params = HttpRequestParameters.builder()
+    .timeouts(new HttpTimeouts(10_000, 10_000))
+    .build()
+
+IHttpClient client = new HttpClientOkHttpImpl(); // or new HttpClientImpl();
+
+HttpResponse response = client.send(request, params);
+
 ```
 

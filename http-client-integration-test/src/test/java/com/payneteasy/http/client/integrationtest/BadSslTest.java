@@ -117,15 +117,14 @@ public class BadSslTest {
 
         HttpRequest request = HttpRequest.builder().method(GET).url(aUrl).build();
 
-        HttpResponse response = null;
         try {
-            response = client.send(request, PARAMS);
+            HttpResponse response = client.send(request, PARAMS);
+            Assert.assertEquals(200, response.getStatusCode());
             System.out.println("   OK " + (System.currentTimeMillis() - started) + " ms");
         } catch (HttpConnectException | HttpReadException | HttpWriteException e) {
             e.printStackTrace();
             Assert.fail("No exception should be thrown");
         }
-        Assert.assertEquals(200, response.getStatusCode());
     }
 
     private void checkConnectionError(String aError, String aUrl) {
