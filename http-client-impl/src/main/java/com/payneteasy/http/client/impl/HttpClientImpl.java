@@ -23,6 +23,8 @@ public class HttpClientImpl implements IHttpClient {
      */
     public static void registerGlobalProxyAuthenticator() {
         System.getProperties().put("jdk.http.auth.tunneling.disabledSchemes", ""); // see https://bugs.openjdk.java.net/browse/JDK-8210814
+        System.getProperties().put("sun.net.client.defaultReadTimeout"   , "60000");
+        System.getProperties().put("sun.net.client.defaultConnectTimeout", "20000");
         Authenticator.setDefault(new LocalThreadProxyAuthenticator());
     }
 
