@@ -111,7 +111,7 @@ public class HttpClientOkHttpImpl implements IHttpClient {
                 .url(aRequest.getUrl())
                 .headers(createHeaders(aRequest.getHeaders()));
 
-        if(aRequest.getBody() != null) {
+        if(aRequest.getBody() != null && aRequest.getBody().length > 0) {
             builder.method(aRequest.getMethod().name(), RequestBody.create(aRequest.getBody()));
         } else {
             builder.method(aRequest.getMethod().name(), null);
