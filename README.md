@@ -18,14 +18,14 @@ Features:
     <repository>
         <id>pne</id>
         <name>payneteasy repo</name>
-        <url>https://mpos.pne.io/maven2</url>
+        <url>https://maven.pne.io</url>
     </repository>
 </repositories>
   
 <dependency>
     <groupId>com.payneteasy.http-client</groupId>
     <artifactId>http-client-impl</artifactId>
-    <version>1.0-1</version>
+    <version>1.0-2</version>
 </dependency>
 ```
 
