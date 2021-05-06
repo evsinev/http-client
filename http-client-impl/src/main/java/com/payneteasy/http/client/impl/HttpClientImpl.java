@@ -145,7 +145,7 @@ public class HttpClientImpl implements IHttpClient {
         return Collections.unmodifiableList(headers);
     }
 
-    private void sendBody(String aUrl, HttpURLConnection aConnection, byte[] aRequestBody) throws HttpWriteException {
+    private void sendBody(String aUrl, HttpURLConnection aConnection, byte[] aRequestBody) throws HttpWriteException, HttpConnectException {
         if(aRequestBody == null || aRequestBody.length == 0) {
             return;
         }
@@ -154,6 +154,8 @@ public class HttpClientImpl implements IHttpClient {
         OutputStream outputStream = null;
         try {
             outputStream = aConnection.getOutputStream();
+        } catch (ConnectException e) {
+            throw new HttpConnectException("Cannot connect to " + aUrl, e);
         } catch (IOException e) {
             throw new HttpWriteException("Cannot create output stream for url " + aUrl, e);
         }
