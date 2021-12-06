@@ -4,7 +4,7 @@
 
     <artifactId>http-client</artifactId>
     <groupId>com.payneteasy</groupId>
-    <version>1.0-5</version>
+    <version>1.0-6-SNAPSHOT</version>
 
     <name>Java http client ${project.version}</name>
 
@@ -38,7 +38,7 @@
         <connection>scm:git:git@github.com:evsinev/http-client.git</connection>
         <developerConnection>scm:git:git@github.com:evsinev/http-client.git</developerConnection>
         <url>https://github.com/evsinev/http-client.git</url>
-        <tag>http-client-1.0-5</tag>
+        <tag>HEAD</tag>
   </scm>
 
     <distributionManagement>
