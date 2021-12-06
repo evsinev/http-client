@@ -22,7 +22,7 @@ public class HttpFormUrlEncodedBodyBuilder {
 
     private String urlEncode(String aName) {
         try {
-            return URLEncoder.encode(aName, "utf-8");
+            return URLEncoder.encode(aName, "utf-8").replace("+", "%20");
         } catch (UnsupportedEncodingException e) {
             throw new IllegalStateException("Cannot find utf-8", e);
         }
