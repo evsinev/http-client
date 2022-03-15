@@ -131,6 +131,18 @@ public class HttpClientOkHttpImpl implements IHttpClient {
                 .callTimeout    ( timeouts.getCallTimeoutMs()   , MILLISECONDS )
                 .writeTimeout   ( timeouts.getWriteTimeoutMs()  , MILLISECONDS );
 
+        if(aRequestParameters.getHostnameVerifier() != null) {
+            builder.hostnameVerifier(aRequestParameters.getHostnameVerifier());
+        }
+
+        if(aRequestParameters.getSslSocketFactory() != null ) {
+            // can throw exception
+            builder.sslSocketFactory(aRequestParameters.getSslSocketFactory(), aRequestParameters.getTrustManager());
+        } else if(aRequestParameters.getTrustManager() != null) {
+            // should throw exception
+            builder.sslSocketFactory(aRequestParameters.getSslSocketFactory(), aRequestParameters.getTrustManager());
+        }
+
         if(proxyParameters == null || proxyParameters.getProxy() == null) {
             return builder.build();
         }

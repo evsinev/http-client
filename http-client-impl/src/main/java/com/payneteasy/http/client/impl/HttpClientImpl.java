@@ -5,7 +5,9 @@ import com.payneteasy.http.client.api.exceptions.HttpConnectException;
 import com.payneteasy.http.client.api.exceptions.HttpReadException;
 import com.payneteasy.http.client.api.exceptions.HttpWriteException;
 
+import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLHandshakeException;
+import javax.net.ssl.SSLSocketFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -192,6 +194,8 @@ public class HttpClientImpl implements IHttpClient {
             throw new HttpConnectException("Cannot open connection to " + aUrl, e);
         }
 
+        configureSsl(connection, aParameters);
+
         connection.setConnectTimeout(aParameters.getTimeouts().getConnectTimeoutMs());
         connection.setReadTimeout(aParameters.getTimeouts().getReadTimeoutMs());
 
@@ -202,6 +206,24 @@ public class HttpClientImpl implements IHttpClient {
         }
 
         return connection;
+    }
+
+    private void configureSsl(HttpURLConnection aConnection, HttpRequestParameters aParameters) {
+        if(aParameters.getHostnameVerifier() != null) {
+            if(aConnection instanceof HttpsURLConnection) {
+                ((HttpsURLConnection) aConnection).setHostnameVerifier(aParameters.getHostnameVerifier());
+            } else {
+                throw new IllegalStateException("Cannot set HttpsURLConnection.setHostnameVerifier(). Connection should be HttpsURLConnection but was HttpURLConnection");
+            }
+        }
+
+        if(aParameters.getSslSocketFactory() != null) {
+            if(aConnection instanceof HttpsURLConnection) {
+                ((HttpsURLConnection) aConnection).setSSLSocketFactory(aParameters.getSslSocketFactory());
+            } else {
+                throw new IllegalStateException("Cannot set HttpsURLConnection.setSSLSocketFactory(). Connection should be HttpsURLConnection but was HttpURLConnection");
+            }
+        }
     }
 
     private HttpURLConnection openConnection(HttpRequestParameters aParameters, URL url) throws IOException {
