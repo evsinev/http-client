@@ -25,7 +25,7 @@ Features:
 <dependency>
     <groupId>com.payneteasy.http-client</groupId>
     <artifactId>http-client-impl</artifactId>
-    <version>1.0-2</version>
+    <version>1.0-6</version>
 </dependency>
 ```
 
