@@ -22,11 +22,20 @@ Features:
     </repository>
 </repositories>
   
+<!-- URL connection client -->   
 <dependency>
     <groupId>com.payneteasy.http-client</groupId>
     <artifactId>http-client-impl</artifactId>
     <version>1.0-6</version>
 </dependency>
+
+<!-- ok-http client --> 
+<dependency>
+    <groupId>com.payneteasy.http-client</groupId>
+    <artifactId>http-client-okhttp</artifactId>
+    <version>1.0-6</version>
+</dependency>
+            
 ```
 
 ### Java code
