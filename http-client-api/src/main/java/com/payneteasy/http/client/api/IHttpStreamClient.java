@@ -8,4 +8,6 @@ public interface IHttpStreamClient {
 
     void send(HttpRequest aRequest, HttpRequestParameters aRequestParameters, IHttpStreamResponseListener aListener) throws HttpConnectException, HttpReadException, HttpWriteException;
 
+    IHttpStreamResponse send(HttpRequest aRequest, HttpRequestParameters aRequestParameters) throws HttpConnectException, HttpReadException, HttpWriteException;
+
 }

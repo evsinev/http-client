@@ -5,15 +5,11 @@ import com.payneteasy.http.client.api.exceptions.HttpConnectException;
 import com.payneteasy.http.client.api.exceptions.HttpReadException;
 import com.payneteasy.http.client.api.exceptions.HttpWriteException;
 
-import javax.net.ssl.SSLHandshakeException;
+import javax.annotation.Nullable;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.net.*;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.logging.Logger;
 
 public class HttpStreamClientImpl implements IHttpStreamClient {
@@ -33,150 +29,87 @@ public class HttpStreamClientImpl implements IHttpStreamClient {
 
     @Override
     public void send(HttpRequest aRequest, HttpRequestParameters aRequestParameters, IHttpStreamResponseListener aListener) throws HttpConnectException, HttpReadException, HttpWriteException {
+        HttpProxyParameters proxyParameters = configureProxyParameters(aRequestParameters);
+        try {
+            String url = aRequest.getUrl();
+            SafeHttpURLConnection connection = new SafeHttpURLConnection(
+                    createConnection(url, aRequest.getMethod(), aRequestParameters)
+            );
+
+            connection.sendHeaders(aRequest.getHeaders());
+            connection.sendBody(url, aRequest.getBody());
+
+            parseListenerResponse(aListener, url, connection, aRequestParameters.getTimeouts());
+        } finally {
+            clearProxyParameters(proxyParameters);
+        }
+    }
+
+    private static void clearProxyParameters(@Nullable HttpProxyParameters proxyParameters) {
+        if(proxyParameters != null) {
+            LocalThreadProxyAuthenticator.clear();
+        }
+    }
+
+    @Nullable
+    private static HttpProxyParameters configureProxyParameters(HttpRequestParameters aRequestParameters) {
         HttpProxyParameters proxyParameters = aRequestParameters.getProxyParameters();
         if(proxyParameters != null) {
             LocalThreadProxyAuthenticator.setParameters(proxyParameters);
         }
+        return proxyParameters;
+    }
+
+    @Override
+    public IHttpStreamResponse send(HttpRequest aRequest, HttpRequestParameters aRequestParameters) throws HttpConnectException, HttpReadException, HttpWriteException {
+        HttpProxyParameters proxyParameters = configureProxyParameters(aRequestParameters);
         try {
-            String            url        = aRequest.getUrl();
-            HttpURLConnection connection = createConnection(url, aRequest.getMethod(), aRequestParameters);
+            String                url        = aRequest.getUrl();
+            SafeHttpURLConnection connection = new SafeHttpURLConnection(createConnection(url, aRequest.getMethod(), aRequestParameters));
 
-            sendHeaders(connection, aRequest.getHeaders());
-            sendBody(url, connection, aRequest.getBody());
+            connection.sendHeaders(aRequest.getHeaders());
+            connection.sendBody(url, aRequest.getBody());
 
-            parseResponse(aListener, url, connection, aRequestParameters.getTimeouts());
+            return parseListenerResponse(url, connection, aRequestParameters.getTimeouts());
         } finally {
-            if(proxyParameters != null) {
-                LocalThreadProxyAuthenticator.clear();
-            }
+            clearProxyParameters(proxyParameters);
         }
     }
 
-    private void parseResponse(IHttpStreamResponseListener aListener, String aUrl, HttpURLConnection aConnection, HttpTimeouts aTimeouts) throws HttpReadException, HttpConnectException {
-        int              statusCode = waitForStatusCode(aUrl, aConnection, aTimeouts);
-
-        String reasonPhrase;
-        try {
-            reasonPhrase = aConnection.getResponseMessage();
-        } catch (IOException e) {
-            throw new HttpReadException("Cannot read reason phrase for url " + aUrl, e);
-        }
+    private void parseListenerResponse(IHttpStreamResponseListener aListener, String aUrl, SafeHttpURLConnection aConnection, HttpTimeouts aTimeouts) throws HttpReadException, HttpConnectException {
+        int    statusCode   = aConnection.waitForStatusCode(aUrl, aTimeouts);
+        String reasonPhrase = aConnection.readReasonPhrase(aUrl);
 
         aListener.onStatus(statusCode, reasonPhrase);
 
-        List<HttpHeader> headers = readHeaders(aConnection);
+        List<HttpHeader> headers = aConnection.readHeaders();
         aListener.onHeaders(headers);
 
         readMessageBody(aListener, aUrl, statusCode, aConnection, headers);
     }
 
-    private int waitForStatusCode(String aUrl, HttpURLConnection aConnection, HttpTimeouts aTimeouts) throws HttpReadException, HttpConnectException {
-        LOG.fine(String.format("Waiting for response code for %s with timeouts %s ...", aUrl, aTimeouts.toString()));
-        int statusCode;
-        try {
-            statusCode = aConnection.getResponseCode();
-        } catch (SSLHandshakeException e) {
-            throw new HttpConnectException("Bad ssl certificate at " + aUrl, e);
-        } catch (ConnectException e) {
-            throw new HttpConnectException("Cannot connect to " + aUrl, e);
-        } catch (IOException e) {
-            throw new HttpReadException("Cannot wait for response code for url " + aUrl, e);
-        }
-        return statusCode;
+    private IHttpStreamResponse parseListenerResponse(String aUrl, SafeHttpURLConnection aConnection, HttpTimeouts aTimeouts) throws HttpReadException, HttpConnectException {
+        int              statusCode   = aConnection.waitForStatusCode(aUrl, aTimeouts);
+        String           reasonPhrase = aConnection.readReasonPhrase(aUrl);
+        List<HttpHeader> headers      = aConnection.readHeaders();
+        InputStream      inputStream  = aConnection.getInputStream(aUrl, statusCode, headers);
+
+        return new HttpStreamResponseImpl(
+                statusCode
+                , reasonPhrase
+                , headers
+                , inputStream
+                , aConnection
+        );
     }
 
-    private void readMessageBody(IHttpStreamResponseListener aListener, String aUrl, int aStatusCode, HttpURLConnection aConnection, List<HttpHeader> aHeaders) throws HttpReadException {
-        InputStream inputStream;
-        try {
-            inputStream = aStatusCode >= 400 ? aConnection.getErrorStream() : aConnection.getInputStream();
-        } catch (IOException e) {
-            throw new HttpReadException("Cannot create input stream for url " + aUrl, e);
-        }
-
-        if(inputStream == null) {
-            return;
-        }
-        
-        int length = aConnection.getContentLength();
-        if(length <= 0 ) {
-            HttpHeaderFinder headerFinder = new HttpHeaderFinder(aHeaders);
-            String transferEncoding       = headerFinder.get("Transfer-Encoding");
-            if(transferEncoding == null) {
-                return;
-            }
-            if(transferEncoding.contains("chunked")) {
-                try {
-                    readAllBytes(aListener, inputStream);
-                } catch (IOException e) {
-                    throw new HttpReadException("Cannot read chunked body from " + aUrl, e);
-                }
-            }
-
-        }
+    private void readMessageBody(IHttpStreamResponseListener aListener, String aUrl, int aStatusCode, SafeHttpURLConnection aConnection, List<HttpHeader> aHeaders) throws HttpReadException {
+        InputStream inputStream = aConnection.getInputStream(aUrl, aStatusCode, aHeaders);
 
         try {
             readAllBytes(aListener, inputStream);
         } catch (IOException e) {
             throw new HttpReadException("Cannot read message body from " + aUrl, e);
-        }
-    }
-
-
-    private List<HttpHeader> readHeaders(HttpURLConnection aConnection) {
-        Map<String, List<String>> headerFields = aConnection.getHeaderFields();
-        List<HttpHeader> headers = new ArrayList<>(headerFields.size());
-
-        for (Map.Entry<String, List<String>> entry : headerFields.entrySet()) {
-            if(entry == null) {
-                continue;
-            }
-
-            String       name   = entry.getKey();
-            if(name == null) {
-                continue;
-            }
-
-            List<String> values = entry.getValue();
-            if (values == null) {
-                headers.add(new HttpHeader(name, ""));
-                continue;
-            }
-
-            for (String value : values) {
-                headers.add(new HttpHeader(name, value));
-            }
-        }
-
-        return Collections.unmodifiableList(headers);
-    }
-
-    private void sendBody(String aUrl, HttpURLConnection aConnection, byte[] aRequestBody) throws HttpWriteException {
-        if(aRequestBody == null || aRequestBody.length == 0) {
-            return;
-        }
-
-        aConnection.setDoOutput(true);
-        OutputStream outputStream = null;
-        try {
-            outputStream = aConnection.getOutputStream();
-        } catch (IOException e) {
-            throw new HttpWriteException("Cannot create output stream for url " + aUrl, e);
-        }
-
-        try {
-            outputStream.write(aRequestBody);
-        } catch (IOException e) {
-            throw new HttpWriteException("Cannot create write body to url " + aUrl, e);
-        }
-    }
-
-    private void sendHeaders(HttpURLConnection aConnection, HttpHeaders aHeaders) {
-        if(aHeaders == null) {
-            return;
-        }
-
-        for (HttpHeader header : aHeaders.asList()) {
-            aConnection.setRequestProperty(header.getName(), header.getValue());
         }
     }
 
