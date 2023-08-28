@@ -13,14 +13,18 @@ public class HttpHeaderFinder {
         this.headers = headers;
     }
 
-    public Optional<String> get(String aHeaderName) {
+    public String get(String aHeaderName) {
         String lowerName = aHeaderName.toLowerCase();
         for (HttpHeader header : headers) {
             String name = header.getName();
-            if(name != null && name.toLowerCase().equals(lowerName)) {
-                return Optional.of(header.getValue());
+            if(name.toLowerCase().equals(lowerName)) {
+                return header.getValue();
             }
         }
-        return Optional.empty();
+        return null;
+    }
+
+    public Optional<String> getOpt(String aHeaderName) {
+        return Optional.ofNullable(get(aHeaderName));
     }
 }

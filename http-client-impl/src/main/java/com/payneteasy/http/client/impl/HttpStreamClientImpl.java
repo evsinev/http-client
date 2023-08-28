@@ -10,7 +10,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.*;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.logging.Logger;
 
 public class HttpStreamClientImpl implements IHttpStreamClient {
@@ -97,11 +100,11 @@ public class HttpStreamClientImpl implements IHttpStreamClient {
         int length = aConnection.getContentLength();
         if(length <= 0 ) {
             HttpHeaderFinder headerFinder = new HttpHeaderFinder(aHeaders);
-            Optional<String> transferEncodingOption            = headerFinder.get("Transfer-Encoding");
-            if(!transferEncodingOption.isPresent()) {
+            String transferEncoding       = headerFinder.get("Transfer-Encoding");
+            if(transferEncoding == null) {
                 return;
             }
-            if(transferEncodingOption.get().contains("chunked")) {
+            if(transferEncoding.contains("chunked")) {
                 try {
                     readAllBytes(aListener, inputStream);
                 } catch (IOException e) {

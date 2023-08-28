@@ -7,7 +7,6 @@ import com.payneteasy.http.client.api.exceptions.HttpWriteException;
 
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLHandshakeException;
-import javax.net.ssl.SSLSocketFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -97,11 +96,11 @@ public class HttpClientImpl implements IHttpClient {
         int length = aConnection.getContentLength();
         if(length <= 0 ) {
             HttpHeaderFinder headerFinder = new HttpHeaderFinder(aHeaders);
-            Optional<String> transferEncodingOption            = headerFinder.get("Transfer-Encoding");
-            if(!transferEncodingOption.isPresent()) {
+            String transferEncoding = headerFinder.get("Transfer-Encoding");
+            if(transferEncoding == null) {
                 return new byte[0];
             }
-            if(transferEncodingOption.get().contains("chunked")) {
+            if(transferEncoding.contains("chunked")) {
                 try {
                     return readAllBytes(inputStream);
                 } catch (IOException e) {
